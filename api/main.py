@@ -1,3 +1,5 @@
+import os
+import requests
 import joblib
 import pandas as pd
 from fastapi import FastAPI
@@ -68,4 +70,35 @@ def predict(data: Transaction):
         "prediction": int(prediction),
         "is_fraud": bool(prediction == 1),
         "fraud_probability": round(float(probability), 4)
+    }
+
+
+# calls the model deployed on Azure ML instead of the local pkl
+# set AZURE_ENDPOINT_URL and AZURE_ENDPOINT_KEY as environment variables before starting uvicorn
+@app.post("/predict-azure")
+def predict_azure(data: Transaction):
+    url = os.environ.get("AZURE_ENDPOINT_URL")
+    key = os.environ.get("AZURE_ENDPOINT_KEY")
+    if not url or not key:
+        return {"error": "AZURE_ENDPOINT_URL / AZURE_ENDPOINT_KEY not set"}
+
+    input_data = pd.DataFrame([data.model_dump()])
+    input_data = make_features(input_data)
+    input_data = input_data[model.feature_names_in_]
+
+    payload = {
+        "input_data": {
+            "columns": input_data.columns.tolist(),
+            "data": input_data.values.tolist()
+        }
+    }
+    headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json"}
+    response = requests.post(url, headers=headers, json=payload)
+    result = response.json()
+
+    return {
+        "prediction": int(result["predictions"][0]),
+        "is_fraud": bool(result["predictions"][0] == 1),
+        "fraud_probability": result["fraud_probability"][0],
+        "source": "azure-ml-endpoint"
     }

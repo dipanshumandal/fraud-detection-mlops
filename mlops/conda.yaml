@@ -1,0 +1,13 @@
+# environment for the online endpoint
+name: fraud-endpoint-env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - pip:
+      - scikit-learn==1.5.2
+      - pandas==2.2.3
+      - numpy==1.26.4
+      - mlflow==2.18.0
+      - azureml-inference-server-http
